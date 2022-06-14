@@ -271,28 +271,28 @@ func (c bccCell) tetras() (tetras [][4]int) {
 	if c.zm.exists() && c.zm.bccnod[ictr] >= 0 {
 		zctr := c.zm.bccnod[ictr]
 		tetras = append(tetras,
-			[4]int{nctr, c.bccnod[i000], c.bccnod[ix00], zctr},
-			[4]int{nctr, c.bccnod[ix00], c.bccnod[ixy0], zctr},
-			[4]int{nctr, c.bccnod[ixy0], c.bccnod[i0y0], zctr},
-			[4]int{nctr, c.bccnod[i0y0], c.bccnod[i000], zctr},
+			[4]int{zctr, c.bccnod[i000], c.bccnod[ix00], nctr},
+			[4]int{zctr, c.bccnod[ix00], c.bccnod[ixy0], nctr},
+			[4]int{zctr, c.bccnod[ixy0], c.bccnod[i0y0], nctr},
+			[4]int{zctr, c.bccnod[i0y0], c.bccnod[i000], nctr},
 		)
 	}
 	if c.ym.exists() && c.ym.bccnod[ictr] >= 0 {
 		yctr := c.ym.bccnod[ictr]
 		tetras = append(tetras,
-			[4]int{nctr, c.bccnod[ix00], c.bccnod[i000], yctr},
-			[4]int{nctr, c.bccnod[ix0z], c.bccnod[ix00], yctr},
-			[4]int{nctr, c.bccnod[i00z], c.bccnod[ix0z], yctr},
-			[4]int{nctr, c.bccnod[i000], c.bccnod[i00z], yctr},
+			[4]int{yctr, c.bccnod[ix00], c.bccnod[i000], nctr},
+			[4]int{yctr, c.bccnod[ix0z], c.bccnod[ix00], nctr},
+			[4]int{yctr, c.bccnod[i00z], c.bccnod[ix0z], nctr},
+			[4]int{yctr, c.bccnod[i000], c.bccnod[i00z], nctr},
 		)
 	}
 	if c.xm.exists() && c.xm.bccnod[ictr] >= 0 {
 		xctr := c.xm.bccnod[ictr]
 		tetras = append(tetras,
-			[4]int{nctr, c.bccnod[i000], c.bccnod[i0y0], xctr},
-			[4]int{nctr, c.bccnod[i00z], c.bccnod[i000], xctr},
-			[4]int{nctr, c.bccnod[i0yz], c.bccnod[i00z], xctr},
-			[4]int{nctr, c.bccnod[i0y0], c.bccnod[i0yz], xctr},
+			[4]int{xctr, c.bccnod[i000], c.bccnod[i0y0], nctr},
+			[4]int{xctr, c.bccnod[i00z], c.bccnod[i000], nctr},
+			[4]int{xctr, c.bccnod[i0yz], c.bccnod[i00z], nctr},
+			[4]int{xctr, c.bccnod[i0y0], c.bccnod[i0yz], nctr},
 		)
 	}
 	return tetras
