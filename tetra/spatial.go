@@ -11,16 +11,16 @@ func boxSize(b r3.Box) r3.Vec {
 }
 
 func boxVertices(a r3.Box) []r3.Vec {
-	v := make([]r3.Vec, 8)
-	v[0] = a.Min
-	v[1] = r3.Vec{X: a.Min.X, Y: a.Min.Y, Z: a.Max.Z}
-	v[2] = r3.Vec{X: a.Min.X, Y: a.Max.Y, Z: a.Min.Z}
-	v[3] = r3.Vec{X: a.Min.X, Y: a.Max.Y, Z: a.Max.Z}
-	v[4] = r3.Vec{X: a.Max.X, Y: a.Min.Y, Z: a.Min.Z}
-	v[5] = r3.Vec{X: a.Max.X, Y: a.Min.Y, Z: a.Max.Z}
-	v[6] = r3.Vec{X: a.Max.X, Y: a.Max.Y, Z: a.Min.Z}
-	v[7] = a.Max
-	return v
+	return []r3.Vec{
+		a.Min,                                // 0
+		{X: a.Max.X, Y: a.Min.Y, Z: a.Min.Z}, // 1
+		{X: a.Max.X, Y: a.Max.Y, Z: a.Min.Z}, // 2
+		{X: a.Min.X, Y: a.Max.Y, Z: a.Min.Z}, // 3
+		{X: a.Min.X, Y: a.Min.Y, Z: a.Max.Z}, // 4
+		{X: a.Max.X, Y: a.Min.Y, Z: a.Max.Z}, // 5
+		a.Max,                                // 6
+		{X: a.Min.X, Y: a.Max.Y, Z: a.Max.Z}, // 7
+	}
 }
 
 func boxCenter(a r3.Box) r3.Vec {

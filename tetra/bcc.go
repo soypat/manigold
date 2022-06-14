@@ -15,7 +15,7 @@ type bcc struct {
 }
 
 type bccMatrix struct {
-	nodes []bccNode
+	cells []bccCell
 	div   [3]int
 }
 
@@ -37,76 +37,79 @@ const (
 
 var unmeshed = [nBCC]int{-1, -1, -1 /**/, -1, -1, -1 /**/, -1, -1, -1}
 
-type bccNode struct {
+type bccCell struct {
 	bccnod [nBCC]int
 	pos    r3.Vec
 	// BCC nodes indices on
-	parent *bccNode
-	xp     *bccNode
-	xm     *bccNode
-	yp     *bccNode
-	ym     *bccNode
-	zp     *bccNode
-	zm     *bccNode
+	parent *bccCell
+	xp     *bccCell
+	xm     *bccCell
+	yp     *bccCell
+	ym     *bccCell
+	zp     *bccCell
+	zm     *bccCell
 	m      *bcc
 }
 
-func (n *bccNode) nodeAt(idx bccidx) int {
-	if n == nil {
+func (c *bccCell) nodeAt(idx bccidx) int {
+	if c == nil {
 		return -1
 	}
 	if idx >= nBCC {
 		panic("bad bcc node index")
 	}
-	return n.bccnod[idx]
+	return c.bccnod[idx]
 }
 
-func (n *bccNode) neighborNode(idx bccidx) int {
-	var nx, ny, nz int
+// neighborNode returns the global node index at n's local bccidx position
+// by checking other neighboring cells which share the node. It returns -1 if node
+// does not exist or if it is the central BCC node.
+func (c *bccCell) neighborNode(idx bccidx) int {
+	var cx, cy, cz int
 	switch idx {
 	case ictr:
 		// central node has no junction.
 		return -1
 	case i000:
-		nx = n.xm.nodeAt(ix00)
-		ny = n.ym.nodeAt(i0y0)
-		nz = n.zm.nodeAt(i00z)
+		cx = c.xm.nodeAt(ix00)
+		cy = c.ym.nodeAt(i0y0)
+		cz = c.zm.nodeAt(i00z)
 	case ix00:
-		nx = n.xp.nodeAt(i000)
-		ny = n.ym.nodeAt(ixy0)
-		nz = n.zm.nodeAt(ix0z)
+		cx = c.xp.nodeAt(i000)
+		cy = c.ym.nodeAt(ixy0)
+		cz = c.zm.nodeAt(ix0z)
 	case ixy0:
-		nx = n.xp.nodeAt(i0y0)
-		ny = n.yp.nodeAt(ix00)
-		nz = n.zm.nodeAt(ixyz)
+		cx = c.xp.nodeAt(i0y0)
+		cy = c.yp.nodeAt(ix00)
+		cz = c.zm.nodeAt(ixyz)
 	case i0y0:
-		nx = n.xm.nodeAt(ixy0)
-		ny = n.yp.nodeAt(i000)
-		nz = n.zm.nodeAt(i0yz)
+		cx = c.xm.nodeAt(ixy0)
+		cy = c.yp.nodeAt(i000)
+		cz = c.zm.nodeAt(i0yz)
 	case i00z:
-		nx = n.xm.nodeAt(ix0z)
-		ny = n.ym.nodeAt(i0yz)
-		nz = n.zp.nodeAt(i000)
+		cx = c.xm.nodeAt(ix0z)
+		cy = c.ym.nodeAt(i0yz)
+		cz = c.zp.nodeAt(i000)
 	case ix0z:
-		nx = n.xp.nodeAt(i00z)
-		ny = n.ym.nodeAt(ixyz)
-		nz = n.zp.nodeAt(ix00)
+		cx = c.xp.nodeAt(i00z)
+		cy = c.ym.nodeAt(ixyz)
+		cz = c.zp.nodeAt(ix00)
 	case ixyz:
-		nx = n.xp.nodeAt(i0yz)
-		ny = n.yp.nodeAt(ix0z)
-		nz = n.zp.nodeAt(ixy0)
+		cx = c.xp.nodeAt(i0yz)
+		cy = c.yp.nodeAt(ix0z)
+		cz = c.zp.nodeAt(ixy0)
 	case i0yz:
-		nx = n.xm.nodeAt(ixyz)
-		ny = n.yp.nodeAt(i00z)
-		nz = n.zp.nodeAt(i0y0)
+		cx = c.xm.nodeAt(ixyz)
+		cy = c.yp.nodeAt(i00z)
+		cz = c.zp.nodeAt(i0y0)
 	}
-	bad := nx >= 0 && ny >= 0 && nx != ny ||
-		nx >= 0 && nz >= 0 && nx != nz ||
-		nz >= 0 && ny >= 0 && nz != ny
+	bad := cx >= 0 && cy >= 0 && cx != cy ||
+		cx >= 0 && cz >= 0 && cx != cz ||
+		cz >= 0 && cy >= 0 && cz != cy
 	if bad {
 		panic("bad mesh operation detected")
 	}
-	return max(nx, max(ny, nz))
+	return max(cx, max(cy, cz))
 }
 
 func MakeBCC(b r3.Box, resolution float64) *bcc {
@@ -124,14 +127,14 @@ func MakeBCC(b r3.Box, resolution float64) *bcc {
 	mesh := &bcc{
 		resolution: resolution,
 	}
-	matrix := bccMatrix{nodes: make([]bccNode, Ncells), div: bccDiv}
+	matrix := bccMatrix{cells: make([]bccCell, Ncells), div: bccDiv}
 	for i := 0; i < bccDiv[0]; i++ {
 		x := (float64(i)+0.5)*resolution + b.Min.X
 		for j := 0; j < bccDiv[1]; j++ {
 			y := (float64(j)+0.5)*resolution + b.Min.Y
 			for k := 0; k < bccDiv[2]; k++ {
 				z := (float64(k)+0.5)*resolution + b.Min.Z
-				matrix.setLevel0(i, j, k, bccNode{pos: r3.Vec{X: x, Y: y, Z: z}, m: mesh, bccnod: unmeshed})
+				matrix.setLevel0(i, j, k, bccCell{pos: r3.Vec{X: x, Y: y, Z: z}, m: mesh, bccnod: unmeshed})
 			}
 		}
 	}
@@ -141,93 +144,90 @@ func MakeBCC(b r3.Box, resolution float64) *bcc {
 
 func (t *bcc) MeshTetraBCC() (nodes []r3.Vec, tetras [][4]int) {
 	n := 0
-	tetras = make([][4]int, 0, len(t.matrix.nodes))
-	t.matrix.foreach(func(_, _, _ int, node *bccNode) {
-		bb := node.box()
+	tetras = make([][4]int, 0, len(t.matrix.cells))
+	t.matrix.foreach(func(_, _, _ int, cell *bccCell) {
+		bb := cell.box()
 		vert := boxVertices(bb)
 		nctr := n
-		node.bccnod[ictr] = nctr
+		cell.bccnod[ictr] = nctr
 		n++
 		nodes = append(nodes, boxCenter(bb))
 		for in := i000; in < ictr; in++ {
-			v := node.neighborNode(in)
+			v := cell.neighborNode(in)
 			if v == -1 {
-				node.bccnod[in] = n
+				// If node has not yet been created we create it here.
+				cell.bccnod[in] = n
 				n++
 				nodes = append(nodes, vert[in])
 			} else {
-				node.bccnod[in] = v
+				cell.bccnod[in] = v
 			}
 		}
-		if len(t.matrix.nodes) == 1 {
-			tetras = append(tetras, node.naiveTetras()...)
-		} else {
-			tetras = append(tetras, node.tetras()...)
-		}
+		tetras = append(tetras, cell.tetras()...)
 	})
 	return nodes, tetras
 }
 
-// exists returns true if tnode is initialized and exists in mesh.
-// Returns false if called on nil tnode.
-func (t *bccNode) exists() bool {
+// exists returns true if bccCell is initialized and exists in a mesh.
+// Returns false if called on nil bccCell.
+func (t *bccCell) exists() bool {
 	return t != nil && t.m != nil
 }
 
-func (t *bccNode) box() r3.Box {
+func (t *bccCell) box() r3.Box {
 	res := t.m.resolution
 	return centeredBox(t.pos, r3.Vec{X: res, Y: res, Z: res})
 }
 
-func (m *bccMatrix) setLevel0(i, j, k int, n bccNode) {
+func (m *bccMatrix) setLevel0(i, j, k int, c bccCell) {
 	if i < 0 || j < 0 || k < 0 || i >= m.div[0] || j >= m.div[1] || k >= m.div[2] {
 		panic("oob tmatrix access")
 	}
-	na := m.at(i, j, k)
-	*na = n
+	ca := m.at(i, j, k)
+	*ca = c
 	// Update x neighbors
-	na.xm = m.at(i-1, j, k)
-	if na.xm.exists() {
-		na.xm.xp = na
+	ca.xm = m.at(i-1, j, k)
+	if ca.xm.exists() {
+		ca.xm.xp = ca
 	}
-	na.xp = m.at(i+1, j, k)
-	if na.xp.exists() {
-		na.xp.xm = na
+	ca.xp = m.at(i+1, j, k)
+	if ca.xp.exists() {
+		ca.xp.xm = ca
 	}
 	// Update y neighbors.
-	na.ym = m.at(i, j-1, k)
-	if na.ym.exists() {
-		na.ym.yp = na
+	ca.ym = m.at(i, j-1, k)
+	if ca.ym.exists() {
+		ca.ym.yp = ca
 	}
-	na.yp = m.at(i, j+1, k)
-	if na.yp.exists() {
-		na.yp.ym = na
+	ca.yp = m.at(i, j+1, k)
+	if ca.yp.exists() {
+		ca.yp.ym = ca
 	}
 	// Update z neighbors
-	na.zm = m.at(i, j, k-1)
-	if na.zm.exists() {
-		na.zm.zp = na
+	ca.zm = m.at(i, j, k-1)
+	if ca.zm.exists() {
+		ca.zm.zp = ca
 	}
-	na.zp = m.at(i, j, k+1)
-	if na.zp.exists() {
-		na.zp.zm = na
+	ca.zp = m.at(i, j, k+1)
+	if ca.zp.exists() {
+		ca.zp.zm = ca
 	}
 }
 
-func (m *bccMatrix) at(i, j, k int) *bccNode {
+func (m *bccMatrix) at(i, j, k int) *bccCell {
 	if i < 0 || j < 0 || k < 0 || i >= m.div[0] || j >= m.div[1] || k >= m.div[2] {
 		return nil
 	}
-	return &m.nodes[i*m.div[1]*m.div[2]+j*m.div[2]+k]
+	return &m.cells[i*m.div[1]*m.div[2]+j*m.div[2]+k]
 }
 
-func (m *bccMatrix) foreach(f func(i, j, k int, nod *bccNode)) {
+func (m *bccMatrix) foreach(f func(i, j, k int, nod *bccCell)) {
 	for i := 0; i < m.div[0]; i++ {
 		ii := i * m.div[1] * m.div[2]
 		for j := 0; j < m.div[1]; j++ {
 			jj := j * m.div[2]
 			for k := 0; k < m.div[2]; k++ {
-				f(i, j, k, &m.nodes[ii+jj+k])
+				f(i, j, k, &m.cells[ii+jj+k])
 			}
 		}
 	}
@@ -241,58 +241,58 @@ func max(a, b int) int {
 }
 
 // naive implementation of BCC tetra mesher. Meshing is not isotropic.
-func (node bccNode) naiveTetras() [][4]int {
-	nctr := node.bccnod[ictr]
+func (c bccCell) naiveTetras() [][4]int {
+	nctr := c.bccnod[ictr]
 	return [][4]int{
 		// YZ plane facing tetrahedrons.
-		{node.bccnod[i000], node.bccnod[i0yz], node.bccnod[i0y0], nctr},
-		{node.bccnod[i000], node.bccnod[i00z], node.bccnod[i0yz], nctr},
-		{node.bccnod[ix00], node.bccnod[ixy0], node.bccnod[ixyz], nctr},
-		{node.bccnod[ix00], node.bccnod[ixyz], node.bccnod[ix0z], nctr},
+		{c.bccnod[i000], c.bccnod[i0yz], c.bccnod[i0y0], nctr},
+		{c.bccnod[i000], c.bccnod[i00z], c.bccnod[i0yz], nctr},
+		{c.bccnod[ix00], c.bccnod[ixy0], c.bccnod[ixyz], nctr},
+		{c.bccnod[ix00], c.bccnod[ixyz], c.bccnod[ix0z], nctr},
 		// XZ
-		{node.bccnod[i000], node.bccnod[ix0z], node.bccnod[i00z], nctr},
-		{node.bccnod[i000], node.bccnod[ix00], node.bccnod[ix0z], nctr},
-		{node.bccnod[i0y0], node.bccnod[i0yz], node.bccnod[ixyz], nctr},
-		{node.bccnod[i0y0], node.bccnod[ixyz], node.bccnod[ixy0], nctr},
+		{c.bccnod[i000], c.bccnod[ix0z], c.bccnod[i00z], nctr},
+		{c.bccnod[i000], c.bccnod[ix00], c.bccnod[ix0z], nctr},
+		{c.bccnod[i0y0], c.bccnod[i0yz], c.bccnod[ixyz], nctr},
+		{c.bccnod[i0y0], c.bccnod[ixyz], c.bccnod[ixy0], nctr},
 		// XY
-		{node.bccnod[i000], node.bccnod[ixy0], node.bccnod[ix00], nctr},
-		{node.bccnod[i000], node.bccnod[i0y0], node.bccnod[ixy0], nctr},
-		{node.bccnod[i00z], node.bccnod[ix0z], node.bccnod[ixyz], nctr},
-		{node.bccnod[i00z], node.bccnod[ixyz], node.bccnod[i0yz], nctr},
+		{c.bccnod[i000], c.bccnod[ixy0], c.bccnod[ix00], nctr},
+		{c.bccnod[i000], c.bccnod[i0y0], c.bccnod[ixy0], nctr},
+		{c.bccnod[i00z], c.bccnod[ix0z], c.bccnod[ixyz], nctr},
+		{c.bccnod[i00z], c.bccnod[ixyz], c.bccnod[i0yz], nctr},
 	}
 }
 
 // tetras is the BCC lattice meshing method. Results in isotropic mesh.
-func (node bccNode) tetras() (tetras [][4]int) {
+func (c bccCell) tetras() (tetras [][4]int) {
 	// We mesh tetrahedrons on minor sides.
-	nctr := node.bccnod[ictr]
+	nctr := c.bccnod[ictr]
 	// Start with nodes in z direction since matrix is indexed with z as major
 	// dimension so maybe zm is on the cache.
-	if node.zm.exists() && node.zm.bccnod[ictr] >= 0 {
-		zctr := node.zm.bccnod[ictr]
+	if c.zm.exists() && c.zm.bccnod[ictr] >= 0 {
+		zctr := c.zm.bccnod[ictr]
 		tetras = append(tetras,
-			[4]int{nctr, node.bccnod[i000], node.bccnod[ix00], zctr},
-			[4]int{nctr, node.bccnod[ix00], node.bccnod[ixy0], zctr},
-			[4]int{nctr, node.bccnod[ixy0], node.bccnod[i0y0], zctr},
-			[4]int{nctr, node.bccnod[i0y0], node.bccnod[i000], zctr},
+			[4]int{nctr, c.bccnod[i000], c.bccnod[ix00], zctr},
+			[4]int{nctr, c.bccnod[ix00], c.bccnod[ixy0], zctr},
+			[4]int{nctr, c.bccnod[ixy0], c.bccnod[i0y0], zctr},
+			[4]int{nctr, c.bccnod[i0y0], c.bccnod[i000], zctr},
 		)
 	}
-	if node.ym.exists() && node.ym.bccnod[ictr] >= 0 {
-		yctr := node.ym.bccnod[ictr]
+	if c.ym.exists() && c.ym.bccnod[ictr] >= 0 {
+		yctr := c.ym.bccnod[ictr]
 		tetras = append(tetras,
-			[4]int{nctr, node.bccnod[ix00], node.bccnod[i000], yctr},
-			[4]int{nctr, node.bccnod[ix0z], node.bccnod[ix00], yctr},
-			[4]int{nctr, node.bccnod[i00z], node.bccnod[ix0z], yctr},
-			[4]int{nctr, node.bccnod[i000], node.bccnod[i00z], yctr},
+			[4]int{nctr, c.bccnod[ix00], c.bccnod[i000], yctr},
+			[4]int{nctr, c.bccnod[ix0z], c.bccnod[ix00], yctr},
+			[4]int{nctr, c.bccnod[i00z], c.bccnod[ix0z], yctr},
+			[4]int{nctr, c.bccnod[i000], c.bccnod[i00z], yctr},
 		)
 	}
-	if node.xm.exists() && node.xm.bccnod[ictr] >= 0 {
-		xctr := node.xm.bccnod[ictr]
+	if c.xm.exists() && c.xm.bccnod[ictr] >= 0 {
+		xctr := c.xm.bccnod[ictr]
 		tetras = append(tetras,
-			[4]int{nctr, node.bccnod[i000], node.bccnod[i0y0], xctr},
-			[4]int{nctr, node.bccnod[i00z], node.bccnod[i000], xctr},
-			[4]int{nctr, node.bccnod[i0yz], node.bccnod[i00z], xctr},
-			[4]int{nctr, node.bccnod[i0y0], node.bccnod[i0yz], xctr},
+			[4]int{nctr, c.bccnod[i000], c.bccnod[i0y0], xctr},
+			[4]int{nctr, c.bccnod[i00z], c.bccnod[i000], xctr},
+			[4]int{nctr, c.bccnod[i0yz], c.bccnod[i00z], xctr},
+			[4]int{nctr, c.bccnod[i0y0], c.bccnod[i0yz], xctr},
 		)
 	}
 	return tetras
